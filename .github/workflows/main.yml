@@ -1,65 +1,19 @@
-name: Direct_To_HuggingFace_CDN
+name: Download Movie File
+
 on:
-  workflow_dispatch:
-    inputs:
-      video_url:
-        description: 'لینکی ڤیدیۆکە (بە تۆکنەکەیەوە)'
-        required: true
-      file_name:
-        description: 'ناوی فایلەکە (بە .mp4 کۆتایی بێت)'
-        required: true
-        default: 'video.mp4'
+  workflow_dispatch: # ئەمە ڕێگەت پێدەدات بە دەستی (Manual) کۆدەکە ئیش پێبکەیت
 
 jobs:
-  upload_job:
+  download-and-save:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 🏗️ Setup Tools
+      - name: داگرتنی فلیمەکە لە سێرڤەرەوە
         run: |
-          sudo apt-get update -qq
-          python -m pip install -U pip huggingface_hub
+          wget -O movie.mp4 "http://45.155.90.34:8080/movie/242897123493/699a2acb2d4c8/72999.mp4?token=fUdcX.fUfazyz.X.X.ydHddXfzaH.X.y.IQ.mp4.cb5afcffba4651761c0071481aea6ab517709291406f3859201f4393ee03807a"
 
-      - name: ⬇️ Download Video (Bypass as Mobile App)
-        run: |
-          # لێرەدا خۆمان وەک پلەیەری مۆبایل (ExoPlayer) دەناسێنین کە زۆربەی ئەپەکان بەکاریدێنن
-          curl -L -k --http1.1 \
-               -A "ExoPlayerDemo/2.18.1 (Linux; Android 12) ExoPlayerLib/2.18.1" \
-               -H "Connection: keep-alive" \
-               -o "video_temp.mp4" \
-               "${{ inputs.video_url }}"
-               
-          echo "==== زانیاری فایل ===="
-          ls -lh video_temp.mp4
-
-      - name: 🚀 Upload to Hugging Face
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          FILE_NAME: ${{ inputs.file_name }}
-        run: |
-          python3 -c "
-          import os
-          from huggingface_hub import HfApi
-          
-          token = os.getenv('HF_TOKEN')
-          target_name = os.getenv('FILE_NAME', 'video.mp4')
-          repo_id = 'Sarkoakram/sarko761'
-          
-          # پشکنین کە ئایا فایلەکە بەتاڵە یان نا
-          if not os.path.exists('video_temp.mp4') or os.path.getsize('video_temp.mp4') < 1000:
-              print('❌ هەڵە: ڤیدیۆکە دانەبەزی (فایلەکە سفر بایتە). سێرڤەرەکە هێشتا ڕێگری دەکات بەهۆی جیاوازی IP!')
-              with open('video_temp.mp4', 'r', errors='ignore') as f:
-                  print('ناوەڕۆکی سێرڤەر:', f.read(200))
-              exit(1)
-
-          api = HfApi()
-          print(f'📤 دەنێردرێت بۆ Hugging Face: {target_name}...')
-          
-          api.upload_file(
-              path_or_fileobj='video_temp.mp4',
-              path_in_repo=target_name,
-              repo_id=repo_id,
-              repo_type='dataset',
-              token=token
-          )
-          print('✅ بە سەرکەوتووی نێردرا!')
-          "
+      - name: هەڵگرتنی فلیمەکە وەک Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-downloaded-movie
+          path: movie.mp4
