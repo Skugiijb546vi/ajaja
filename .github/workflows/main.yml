@@ -24,53 +24,47 @@ jobs:
           sudo apt-get install -y ffmpeg aria2 -qq
           python -m pip install -U pip yt-dlp huggingface_hub
 
-      - name: ⬇️ Download Video (High Speed & Bypass)
+      - name: ⬇️ Download Video
         run: |
-          # بەکارهێنانی yt-dlp لەگەڵ aria2c بۆ داگرتنی خێرا و تێپەڕاندنی بلۆک
           yt-dlp \
             --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
             --add-header "Referer: ${{ inputs.referer_url }}" \
-            --add-header "Origin: ${{ inputs.referer_url }}" \
             --no-check-certificate \
             --external-downloader aria2c \
             --external-downloader-args "-x 16 -s 16 -k 1M" \
-            -o "video.mp4" \
+            -o "video_temp.mp4" \
             "${{ inputs.video_url }}"
 
       - name: 🚀 Upload to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FILE_NAME: ${{ inputs.file_name }}
         run: |
           python3 -c "
           import os
           from huggingface_hub import HfApi
           
           token = os.getenv('HF_TOKEN')
-          if not token:
-              print('❌ Error: HF_TOKEN is missing in GitHub Secrets!')
-              exit(1)
-              
-          if not os.path.exists('video.mp4'):
-              print('❌ Error: Video file not found! Download failed.')
-              exit(1)
-              
-          api = HfApi()
+          target_name = os.getenv('FILE_NAME', 'video.mp4')
           repo_id = 'Sarkoakram/sarko761'
-          file_name = '${{ inputs.inputs.file_name if hasattr(inputs, \"file_name\") else \"video.mp4\" }}' # Fixed reference
           
-          # دڵنیابوونەوە لە ناوی فایلەکە ئەگەر بەتاڵ بوو
-          target_name = '${{ inputs.file_name }}'
-          if not target_name.endswith('.mp4'):
-              target_name += '.mp4'
+          if not token:
+              print('❌ Error: HF_TOKEN is missing!')
+              exit(1)
+              
+          if not os.path.exists('video_temp.mp4'):
+              print('❌ Error: Download failed!')
+              exit(1)
 
-          print(f'📤 Sending to Hugging Face: {target_name}...')
+          api = HfApi()
+          print(f'📤 Uploading {target_name} to {repo_id}...')
           
           api.upload_file(
-              path_or_fileobj='video.mp4',
+              path_or_fileobj='video_temp.mp4',
               path_in_repo=target_name,
               repo_id=repo_id,
               repo_type='dataset',
               token=token
           )
-          print('✅ Done! Check your Hugging Face repo.')
+          print('✅ Success!')
           "
