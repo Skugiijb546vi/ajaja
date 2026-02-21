@@ -3,16 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'لینکی ڤیدیۆکە (بە تۆکنەکەیەوە)'
+        description: 'لینکی ڤیدیۆکە'
         required: true
       file_name:
-        description: 'ناوی فایلەکە لەناو Hugging Face'
+        description: 'ناوی فایلەکە'
         required: true
         default: 'video.mp4'
-      referer_url:
-        description: 'سەرچاوەی لینکەکە'
-        required: true
-        default: 'http://45.155.90.34:8080/'
 
 jobs:
   upload_job:
@@ -21,18 +17,19 @@ jobs:
       - name: 🏗️ Setup Tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y aria2 -qq
           python -m pip install -U pip huggingface_hub
 
-      - name: ⬇️ Download Video (Direct Mode)
+      - name: ⬇️ Download Video (Force Browser Headers)
         run: |
-          # بەکارهێنانی aria2c ڕاستەوخۆ بۆ تێپەڕاندنی هەڵەی 401 ی yt-dlp
-          aria2c -x 16 -s 16 -k 1M \
-            --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
-            --header="Referer: ${{ inputs.referer_url }}" \
-            --check-certificate=false \
-            -o "video_temp.mp4" \
-            "${{ inputs.video_url }}"
+          # بەکارهێنانی curl چونکە سێرڤەرەکە بەرامبەر aria2 و yt-dlp هەستیارە
+          # لێرەدا هەموو ئەو زانیارییانەمان داناوە کە وێبگەڕ بەکاری دێنێت
+          curl -L -k -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
+               -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8" \
+               -H "Accept-Language: en-US,en;q=0.9" \
+               -H "Connection: keep-alive" \
+               --retry 3 \
+               -o "video_temp.mp4" \
+               "${{ inputs.video_url }}"
 
       - name: 🚀 Upload to Hugging Face
         env:
@@ -47,16 +44,12 @@ jobs:
           target_name = os.getenv('FILE_NAME', 'video.mp4')
           repo_id = 'Sarkoakram/sarko761'
           
-          if not token:
-              print('❌ Error: HF_TOKEN is missing!')
-              exit(1)
-              
-          if not os.path.exists('video_temp.mp4'):
-              print('❌ Error: Download failed! File not found.')
+          if not os.path.exists('video_temp.mp4') or os.path.getsize('video_temp.mp4') < 1000:
+              print('❌ Error: Download failed or file is too small!')
               exit(1)
 
           api = HfApi()
-          print(f'📤 Uploading {target_name} to {repo_id}...')
+          print(f'📤 Uploading {target_name}...')
           
           api.upload_file(
               path_or_fileobj='video_temp.mp4',
