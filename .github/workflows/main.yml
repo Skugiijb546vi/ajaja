@@ -21,17 +21,16 @@ jobs:
       - name: 🏗️ Setup Tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg aria2 -qq
-          python -m pip install -U pip yt-dlp huggingface_hub
+          sudo apt-get install -y aria2 -qq
+          python -m pip install -U pip huggingface_hub
 
-      - name: ⬇️ Download Video
+      - name: ⬇️ Download Video (Direct Mode)
         run: |
-          yt-dlp \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
-            --add-header "Referer: ${{ inputs.referer_url }}" \
-            --no-check-certificate \
-            --external-downloader aria2c \
-            --external-downloader-args "-x 16 -s 16 -k 1M" \
+          # بەکارهێنانی aria2c ڕاستەوخۆ بۆ تێپەڕاندنی هەڵەی 401 ی yt-dlp
+          aria2c -x 16 -s 16 -k 1M \
+            --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
+            --header="Referer: ${{ inputs.referer_url }}" \
+            --check-certificate=false \
             -o "video_temp.mp4" \
             "${{ inputs.video_url }}"
 
@@ -53,7 +52,7 @@ jobs:
               exit(1)
               
           if not os.path.exists('video_temp.mp4'):
-              print('❌ Error: Download failed!')
+              print('❌ Error: Download failed! File not found.')
               exit(1)
 
           api = HfApi()
