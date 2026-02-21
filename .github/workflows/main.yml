@@ -14,49 +14,14 @@ jobs:
   upload_job:
     runs-on: ubuntu-latest
     steps:
-      - name: 🏗️ Setup Tools
+      - name: ⬇️ Download Video (Test & Read Error)
         run: |
-          sudo apt-get update -qq
-          python -m pip install -U pip huggingface_hub
-
-      - name: ⬇️ Download Video (Force Browser Headers)
-        run: |
-          # بەکارهێنانی curl چونکە سێرڤەرەکە بەرامبەر aria2 و yt-dlp هەستیارە
-          # لێرەدا هەموو ئەو زانیارییانەمان داناوە کە وێبگەڕ بەکاری دێنێت
-          curl -L -k -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
-               -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8" \
-               -H "Accept-Language: en-US,en;q=0.9" \
-               -H "Connection: keep-alive" \
-               --retry 3 \
+          curl -s -L -k -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \
                -o "video_temp.mp4" \
                "${{ inputs.video_url }}"
-
-      - name: 🚀 Upload to Hugging Face
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          FILE_NAME: ${{ inputs.file_name }}
-        run: |
-          python3 -c "
-          import os
-          from huggingface_hub import HfApi
+               
+          echo "==== قەبارەی فایلەکە ===="
+          ls -lh video_temp.mp4
           
-          token = os.getenv('HF_TOKEN')
-          target_name = os.getenv('FILE_NAME', 'video.mp4')
-          repo_id = 'Sarkoakram/sarko761'
-          
-          if not os.path.exists('video_temp.mp4') or os.path.getsize('video_temp.mp4') < 1000:
-              print('❌ Error: Download failed or file is too small!')
-              exit(1)
-
-          api = HfApi()
-          print(f'📤 Uploading {target_name}...')
-          
-          api.upload_file(
-              path_or_fileobj='video_temp.mp4',
-              path_in_repo=target_name,
-              repo_id=repo_id,
-              repo_type='dataset',
-              token=token
-          )
-          print('✅ Success!')
-          "
+          echo "==== ناوەڕۆکی نامەی سێرڤەرەکە ===="
+          head -c 500 video_temp.mp4
